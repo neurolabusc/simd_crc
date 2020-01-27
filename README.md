@@ -13,20 +13,20 @@ This tiny project compares the conventional CRC calculation with the GPL-license
 
 Compile this program with `HAS_PCLMUL` for the BSD-licensed SIMD solution. Compile with both `HAS_PCLMUL` and `HAS_GPL` for the GPL-licensed SIMD solution (which also requires you to compile the gpl object file). Compile with neither option for the conventional solution.
 
+Here is an example of three runs of the program, once without using SIMD, once with the BSD-licensed SIMD and once with the GPL SIMD. Note the two SIMD solutions provide similar performance.
+
 ```
->gcc -O3 -o tst  x86.c crc32.c zutil.c  test.c -march=native; ./tst
- Conversion required 2.040490 seconds.
- CRC= 666546449
->gcc -O3 -o tst  x86.c crc32.c zutil.c  test.c -DHAS_PCLMUL -march=native; ./tst
- Conversion required 0.086749 seconds.
- CRC= 666546449
->simd_crc >gcc -O3 -o tst  x86.c crc32.c zutil.c  test.c -DHAS_PCLMUL -march=native; ./tst
- Conversion required 0.086607 seconds.
- CRC= 666546449
->simd_crc >gcc -c crc32-pclmul_asm.S -o gpl.o
->simd_crc >gcc -O3 -o tst  x86.c crc32.c zutil.c  test.c -DHAS_PCLMUL -DHAS_GPL gpl.o -march=native; ./tst
- Conversion required 0.099362 seconds.
- CRC= 666546449
+>gcc -std=c11 -O3 -o tst  crc32.c zutil.c  test.c -mpclmul -lm -march=native; ./tst
+Conversion required 2.138226 seconds.
+CRC= 1214662048
+>gcc -std=c11 -O3 -o tst  crc32.c zutil.c  test.c -DHAS_PCLMUL -mpclmul -lm -march=native; ./tst
+Conversion required 0.112599 seconds.
+CRC= 1214662048
+>gcc  -O3 -c crc32-pclmul_asm.S -o gpl.o
+>gcc -std=c11 -O3 -o tst  crc32.c zutil.c  test.c -DHAS_PCLMUL -DHAS_GPL gpl.o -mpclmul -lm -march=native; ./tst
+Conversion required 0.120295 seconds.
+CRC= 1214662048
 ```
+
 
 

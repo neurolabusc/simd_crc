@@ -25,6 +25,8 @@
 #include <emmintrin.h>
 #include <smmintrin.h>
 #include <wmmintrin.h>
+//#include <stdio.h>
+#include <cpuid.h>
 #endif
 
 #ifdef __aarch64__
@@ -279,8 +281,26 @@ local unsigned long crc32_generic(crc, buf, len)
 
 
 #ifdef HAS_GPL
- extern uint crc32_pclmul_le_16(unsigned char const *buffer, size_t len, uInt crc32);
+ extern uLong crc32_pclmul_le_16(unsigned char const *buffer, size_t len, uInt crc32);
 #else 
+
+int cpu_has_pclmul = -1; //global: will be 0 or 1 after first test
+
+int has_pclmul(void) {
+	if (cpu_has_pclmul >= 0)
+		return cpu_has_pclmul;
+	cpu_has_pclmul = 0;	
+	int leaf = 1;
+	uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+	/* %ecx */
+	#define crc_bit_PCLMUL	(1 << 1)
+	if (__get_cpuid(leaf, &eax, &ebx, &ecx, &edx)) {
+		//printf("leaf=%d, eax=0x%x, ebx=0x%x, ecx=0x%x, edx=0x%x\n", leaf, eax, ebx, ecx, edx);
+		if ((ecx & crc_bit_PCLMUL) != 0)
+			cpu_has_pclmul = 1;		
+	}
+	return cpu_has_pclmul;
+}
 
 //https://github.com/webosose/chromium68/blob/master/src/third_party/zlib/crc32_simd.c
 /* crc32_simd.c
@@ -331,7 +351,7 @@ local unsigned long crc32_generic(crc, buf, len)
 #define zalign(x) __attribute__((aligned((x))))
 #endif
 
-uint crc32_simd(unsigned char const *buf, size_t len, uInt crc) {
+uLong crc32_simd(unsigned char const *buf, size_t len, uInt crc) {
     /*
      * Definitions of the bit-reflected domain constants k1,k2,k3, etc and
      * the CRC32+Barrett polynomials given at the end of the paper.
@@ -450,7 +470,10 @@ uLong crc32(crc, buf, len)
 {
     if (len < PCLMUL_MIN_LEN + PCLMUL_ALIGN  - 1)
       return crc32_generic(crc, buf, len);
-
+    #ifndef HAS_GPL //detect whether current CPU supports PCLMUL
+    if (!has_pclmul())
+      return crc32_generic(crc, buf, len);
+    #endif
     /* Handle the leading patial chunk */
     uInt misalign = PCLMUL_ALIGN_MASK & ((unsigned long)buf);
     uInt sz = (PCLMUL_ALIGN - misalign) % PCLMUL_ALIGN;
@@ -459,7 +482,6 @@ uLong crc32(crc, buf, len)
       buf += sz;
       len -= sz;
     }
-
     /* Go over 16-byte chunks */
     #ifdef HAS_GPL
     crc = crc32_pclmul_le_16(buf, (len & ~PCLMUL_ALIGN_MASK), crc ^ 0xffffffffUL);
