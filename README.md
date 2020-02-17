@@ -19,7 +19,7 @@ Here is an example of three runs of the program, once without using SIMD, once w
 >gcc -std=c11 -O3 -o tst  crc32.c zutil.c  test.c -mpclmul -lm -march=native; ./tst
 Conversion required 2.138226 seconds.
 CRC= 1214662048
->gcc -std=c11 -O3 -o tst  crc32.c zutil.c  test.c -DHAS_PCLMUL -mpclmul -lm -march=native; ./tst
+>gcc -std=c11 -O3 -o tst  crc32_simd.c crc32.c zutil.c  test.c -DHAS_PCLMUL -mpclmul -lm -march=native; ./tst
 Conversion required 0.112599 seconds.
 CRC= 1214662048
 >gcc  -O3 -c crc32-pclmul_asm.S -o gpl.o
